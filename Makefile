@@ -1,9 +1,13 @@
-.PHONY: all clean install clean-db
+.PHONY: all clean clean-db
+
 
 all:
-	go build -o bin/enum-cert cmd/crtsh/main.go
-	go build -o bin/enum-sub cmd/subfinder/main.go
-	go build -o bin/enum-web cmd/httpx/main.go
+	go build -o bin/discover-domains cmd/discover-domains/main.go
+	go build -o bin/discover-subs cmd/discover-subs/main.go
+	go build -o bin/discover-web cmd/discover-web/main.go
+	go build -o bin/discover-urls cmd/discover-urls/main.go
+	go build -o bin/discover-endpoints cmd/discover-endpoints/main.go
+	go build -o bin/discover-files cmd/discover-files/main.go
 
 clean:
 	rm -rf bin
@@ -11,7 +15,3 @@ clean:
 clean-db:
 	rm -f assets.db vulnex.db
 
-install:
-	go install ./cmd/crtsh
-	go install ./cmd/subfinder
-	go install ./cmd/httpx

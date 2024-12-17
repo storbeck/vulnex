@@ -4,22 +4,40 @@ A set of tools for domain enumeration and reconnaissance that stores results in 
 
 ## Tools
 
-### enum-cert
+### discover-domains
 Find domains from SSL certificates:
 ```bash
-echo "example.com" | ./bin/enum-cert
+echo "example.com" | ./bin/discover-domains
 ```
 
-### enum-sub
+### discover-subs
 Enumerate subdomains:
 ```bash
-echo "example.com" | ./bin/enum-sub
+echo "example.com" | ./bin/discover-subs
 ```
 
-### enum-web
+### discover-web
 Probe domains for web server information:
 ```bash
-cat domains.txt | ./bin/enum-web
+cat domains.txt | ./bin/discover-web
+```
+
+### discover-urls
+Extract URLs from web pages:
+```bash
+cat domains.txt | ./bin/discover-urls
+```
+
+### discover-endpoints
+Crawl and discover endpoints using katana:
+```bash
+cat urls.txt | ./bin/discover-endpoints
+```
+
+### discover-files
+Find sensitive files and directories:
+```bash
+cat urls.txt | ./bin/discover-files
 ```
 
 ## Building
@@ -63,6 +81,11 @@ View all live domains with status 200:
 sqlite3 vulnex.db "SELECT domain,status_code,server FROM assets WHERE status_code=200"
 ```
 
+View discovered files and directories:
+```bash
+sqlite3 vulnex.db "SELECT url,status_code,content_type,content_length FROM files WHERE status_code=200"
+```
+
 Reset the database:
 ```bash
 make clean-db
@@ -73,13 +96,17 @@ make clean-db
 - Go 1.23+
 - httpx (`go install -v github.com/projectdiscovery/httpx/cmd/httpx@latest`)
 - subfinder
+- katana
 - sqlite3
 
 ## Pipeline Example
 
 Run full enumeration pipeline:
 ```bash
-echo "example.com" | ./bin/enum-cert | tee domains.txt
-cat domains.txt | ./bin/enum-sub | tee -a domains.txt
-cat domains.txt | sort -u | ./bin/enum-web
+./bin/discover-domains "domain.com" | tee domains.txt
+cat domains.txt | ./bin/discover-subs | tee -a domains.txt
+cat domains.txt | sort -u | ./bin/discover-web | tee web.txt
+cat web.txt | ./bin/discover-urls | tee urls.txt
+cat urls.txt | ./bin/discover-endpoints | tee endpoints.txt
+cat urls.txt | ./bin/discover-files | tee files.txt
 ```

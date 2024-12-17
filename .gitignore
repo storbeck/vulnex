@@ -26,7 +26,7 @@ vendor/
 
 # SQLite database files
 *.db
-domains.txt
+*.txt
 
 # OS specific files
 .DS_Store
