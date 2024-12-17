@@ -110,3 +110,7 @@ cat web.txt | ./bin/discover-urls | tee urls.txt
 cat urls.txt | ./bin/discover-endpoints | tee endpoints.txt
 cat urls.txt | ./bin/discover-files | tee files.txt
 ```
+
+## Report
+
+Run `./run.sh` to generate a report in `report.md`.
