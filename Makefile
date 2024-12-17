@@ -5,7 +5,6 @@ all:
 	go build -o bin/discover-domains cmd/discover-domains/main.go
 	go build -o bin/discover-subs cmd/discover-subs/main.go
 	go build -o bin/discover-web cmd/discover-web/main.go
-	go build -o bin/discover-urls cmd/discover-urls/main.go
 	go build -o bin/discover-endpoints cmd/discover-endpoints/main.go
 	go build -o bin/discover-files cmd/discover-files/main.go
 

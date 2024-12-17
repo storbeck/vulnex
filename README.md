@@ -5,9 +5,9 @@ A set of tools for domain enumeration and reconnaissance that stores results in 
 ## Tools
 
 ### discover-domains
-Find domains from SSL certificates:
+Find domains from SSL certificates using a HackerOne program name:
 ```bash
-echo "example.com" | ./bin/discover-domains
+./bin/discover-domains hackerone-program-name
 ```
 
 ### discover-subs
@@ -20,12 +20,6 @@ echo "example.com" | ./bin/discover-subs
 Probe domains for web server information:
 ```bash
 cat domains.txt | ./bin/discover-web
-```
-
-### discover-urls
-Extract URLs from web pages:
-```bash
-cat domains.txt | ./bin/discover-urls
 ```
 
 ### discover-endpoints
@@ -116,12 +110,11 @@ You can either:
 
 Run full enumeration pipeline:
 ```bash
-./bin/discover-domains "domain.com" | tee domains.txt
+./bin/discover-domains "hackerone-program" | tee domains.txt
 cat domains.txt | ./bin/discover-subs | tee -a domains.txt
 cat domains.txt | sort -u | ./bin/discover-web | tee web.txt
-cat web.txt | ./bin/discover-urls | tee urls.txt
-cat urls.txt | ./bin/discover-endpoints | tee endpoints.txt
-cat urls.txt | ./bin/discover-files | tee files.txt
+cat web.txt | ./bin/discover-endpoints | tee endpoints.txt
+cat web.txt | ./bin/discover-files | tee files.txt
 ```
 
 You can also chain SQLite queries with tools. For example, scan files on all live domains:
