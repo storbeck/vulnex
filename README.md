@@ -1,6 +1,6 @@
 # Vulnex
 
-Vulnex is a fast domain discovery and asset mapping tool that processes program scopes and discovers related domains, endpoints, and web assets.
+Vulnex is a fast domain discovery and asset mapping tool that processes HackerOne program scopes and discovers related domains, endpoints, and web assets.
 
 ## Features
 
@@ -29,17 +29,17 @@ make
 ## Usage
 
 ```bash
-# Basic usage
-./run.sh <program-name>
+# Basic usage - provide a HackerOne program name
+./run.sh <hackerone-program-name>
 
-# Example
-./run.sh github
+# Example - scan roblox's HackerOne program scope
+./run.sh roblox
 ```
 
 ## Output
 
 Results are stored in `scans/YYYYMMDD_HHMMSS_program/`:
-- `domains.txt` - Discovered domains
+- `domains.txt` - Discovered domains from program scope
 - `web.txt` - Active web servers
 - `endpoints.txt` - Discovered endpoints
 - `files.txt` - Found assets
