@@ -1,127 +1,64 @@
-# Vulnex - Domain Enumeration Toolkit
+# Vulnex
 
-A set of tools for domain enumeration and reconnaissance that stores results in SQLite.
+Vulnex is a fast domain discovery and asset mapping tool that processes program scopes and discovers related domains, endpoints, and web assets.
 
-## Tools
+## Features
 
-### discover-domains
-Find domains from SSL certificates using a HackerOne program name:
+- 🔍 Certificate transparency log enumeration
+- 🌐 Automated subdomain discovery
+- 🚦 Web technology fingerprinting
+- 📍 Endpoint crawling and parameter discovery
+- 📊 Asset reporting and analysis
+- 💾 Persistent SQLite storage
+
+## Install
+
 ```bash
-./bin/discover-domains hackerone-program-name
+# Clone the repo
+git clone https://github.com/storbeck/vulnex
+cd vulnex
+
+# Install dependencies
+go mod download
+playwright-go install
+
+# Build
+make
 ```
 
-### discover-subs
-Enumerate subdomains:
+## Usage
+
 ```bash
-echo "example.com" | ./bin/discover-subs
+# Basic usage
+./run.sh <program-name>
+
+# Example
+./run.sh github
 ```
 
-### discover-web
-Probe domains for web server information:
-```bash
-cat domains.txt | ./bin/discover-web
-```
+## Output
 
-### discover-endpoints
-Crawl and discover endpoints using katana:
-```bash
-cat urls.txt | ./bin/discover-endpoints
-```
-
-### discover-files
-Find sensitive files and directories:
-```bash
-cat urls.txt | ./bin/discover-files
-```
-
-## Building
-
-Build all tools:
-```bash
-make all
-```
-
-Clean build artifacts:
-```bash
-make clean
-```
-
-## Database
-
-Results are stored in `vulnex.db`. Here are some useful queries:
-
-View all found domains from certificates:
-```bash
-sqlite3 vulnex.db "SELECT domain,source FROM domains WHERE source='cert'"
-```
-
-View all subdomains:
-```bash
-sqlite3 vulnex.db "SELECT domain FROM domains"
-```
-
-View web server details:
-```bash
-sqlite3 vulnex.db "SELECT domain,status_code,title,tech,server FROM assets"
-```
-
-View domains with specific technology:
-```bash
-sqlite3 vulnex.db "SELECT domain,tech FROM assets WHERE tech LIKE '%nginx%'"
-```
-
-View all live domains with status 200:
-```bash
-sqlite3 vulnex.db "SELECT domain,status_code,server FROM assets WHERE status_code=200"
-```
-
-View discovered files and directories:
-```bash
-sqlite3 vulnex.db "SELECT url,status_code,content_type,content_length FROM files WHERE status_code=200"
-```
-
-Reset the database:
-```bash
-make clean-db
-```
+Results are stored in `scans/YYYYMMDD_HHMMSS_program/`:
+- `domains.txt` - Discovered domains
+- `web.txt` - Active web servers
+- `endpoints.txt` - Discovered endpoints
+- `files.txt` - Found assets
+- `report.md` - Summary report
 
 ## Requirements
 
-- Go 1.23+
-- httpx (`go install -v github.com/projectdiscovery/httpx/cmd/httpx@latest`)
+- Go 1.19+
+- SQLite3
 - subfinder
+- httpx
 - katana
-- sqlite3
-- SecLists wordlist (or your own custom wordlist)
 
-### Environment Setup
+## Notes
 
-Set the path to your wordlist:
-```bash
-export WORDLIST_PATH=/path/to/wordlist
-```
+- Results are stored in SQLite database (`vulnex.db`)
+- Use `make clean` to remove binaries
+- Use `make clean-db` to remove database
 
-You can either:
-- Download SecLists from GitHub: `git clone https://github.com/danielmiessler/SecLists.git`
-  and use `/Discovery/Web-Content/raft-medium-directories.txt`
-- Or provide your own custom wordlist
+## License
 
-## Pipeline Example
-
-Run full enumeration pipeline:
-```bash
-./bin/discover-domains "hackerone-program" | tee domains.txt
-cat domains.txt | ./bin/discover-subs | tee -a domains.txt
-cat domains.txt | sort -u | ./bin/discover-web | tee web.txt
-cat web.txt | ./bin/discover-endpoints | tee endpoints.txt
-cat web.txt | ./bin/discover-files | tee files.txt
-```
-
-You can also chain SQLite queries with tools. For example, scan files on all live domains:
-```bash
-sqlite3 vulnex.db "SELECT domain FROM assets WHERE status_code=200" | ./bin/discover-files
-```
-
-## Report
-
-Run `./run.sh` to generate a report in `report.md`.
+MIT
