@@ -6,11 +6,10 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"os/exec"
-	"strings"
 	"time"
 
 	_ "github.com/mattn/go-sqlite3"
+	"github.com/playwright-community/playwright-go"
 )
 
 func main() {
@@ -22,11 +21,6 @@ func main() {
 	defer db.Close()
 
 	// Initialize table
-	_, err = db.Exec(`DROP TABLE IF EXISTS files`)
-	if err != nil {
-		log.Fatal(err)
-	}
-
 	_, err = db.Exec(`CREATE TABLE IF NOT EXISTS files (
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
 		url TEXT,
@@ -43,76 +37,91 @@ func main() {
 	// Read target URLs from stdin
 	var urls []string
 	scanner := bufio.NewScanner(os.Stdin)
-	fmt.Println("Enter URLs (one per line), press Ctrl+D when done:")
 	for scanner.Scan() {
 		urls = append(urls, scanner.Text())
 	}
 
-	// Wordlist path
-	wordlist := os.Getenv("WORDLIST_PATH")
-	if wordlist == "" {
-		log.Fatal("WORDLIST_PATH environment variable not set. Please set it to your wordlist file path.")
+	// Initialize Playwright
+	err = playwright.Install()
+	if err != nil {
+		log.Fatalf("Could not install playwright: %v", err)
 	}
 
+	pw, err := playwright.Run()
+	if err != nil {
+		log.Fatalf("Could not start playwright: %v", err)
+	}
+	defer pw.Stop()
 
-	for _, url := range urls {
-		fmt.Printf("Scanning %s...\n", url)
+	browser, err := pw.Chromium.Launch(playwright.BrowserTypeLaunchOptions{
+		Headless: playwright.Bool(true),
+	})
+	if err != nil {
+		log.Fatalf("Could not launch browser: %v", err)
+	}
+	defer browser.Close()
 
-		// Execute ffuf with JSON output
-		ffufCmd := exec.Command("ffuf",
-			"-u", url+"/FUZZ",
-			"-w", wordlist,
-			"-o", "output.json",
-			"-of", "json",
-			"-mc", "200,301,403") // Match specific status codes
+	// Create a new context
+	context, err := browser.NewContext()
+	if err != nil {
+		log.Fatalf("Could not create context: %v", err)
+	}
+	defer context.Close()
 
-		if err := ffufCmd.Run(); err != nil {
-			log.Printf("Error running ffuf: %v\n", err)
-			continue
-		}
+	// Process each URL
+	for _, baseURL := range urls {
+		fmt.Printf("Crawling %s...\n", baseURL)
 
-		// Parse ffuf JSON output
-		file, err := os.Open("output.json")
+		// Create a new page
+		page, err := context.NewPage()
 		if err != nil {
-			log.Printf("Error opening ffuf output: %v\n", err)
+			log.Printf("Could not create page: %v", err)
 			continue
 		}
 
-		defer file.Close()
-		parser := bufio.NewScanner(file)
-		for parser.Scan() {
-			line := parser.Text()
-			if strings.Contains(line, "input") {
-				// Simplified parsing for JSON output
-				parts := strings.Split(line, ",")
-				if len(parts) > 0 {
-					path := extractField(parts, `"input"`)
-					statusCode := extractField(parts, `"status"`)
-					contentLength := extractField(parts, `"length"`)
+		// Enable request interception
+		page.On("request", func(req playwright.Request) {
+			url := req.URL()
+			fmt.Printf("Discovered: %s\n", url)
 
-					// Insert into SQLite
-					_, err = db.Exec(`INSERT OR IGNORE INTO files 
-					(url, path, status_code, content_length, discovered_at)
-					VALUES (?, ?, ?, ?, ?)`,
-						url, path, statusCode, contentLength, time.Now())
-
-					if err != nil {
-						log.Printf("Error inserting record: %v\n", err)
-					} else {
-						fmt.Printf("[+] Found: %s [%s]\n", path, statusCode)
-					}
-				}
+			// Store in database
+			_, err = db.Exec(`INSERT OR IGNORE INTO files 
+				(url, path, status_code, content_length, discovered_at)
+				VALUES (?, ?, ?, ?, ?)`,
+				baseURL, req.URL(), 200, 0, time.Now())
+			if err != nil {
+				log.Printf("Error inserting record: %v\n", err)
 			}
-		}
-	}
-}
+		})
 
-// Helper to extract JSON field values from ffuf output
-func extractField(parts []string, field string) string {
-	for _, part := range parts {
-		if strings.Contains(part, field) {
-			return strings.Split(part, ":")[1]
+		// Navigate to the page
+		_, err = page.Goto(baseURL, playwright.PageGotoOptions{
+			WaitUntil: playwright.WaitUntilStateNetworkidle,
+			Timeout:   playwright.Float(30000),
+		})
+		if err != nil {
+			log.Printf("Error navigating to %s: %v\n", baseURL, err)
+			continue
 		}
+
+		// Get all resources loaded by the page
+		resources, err := page.Evaluate(`() => {
+			const resources = [];
+			performance.getEntriesByType('resource').forEach(entry => {
+				resources.push(entry.name);
+			});
+			return resources;
+		}`)
+		if err != nil {
+			log.Printf("Error getting resources: %v\n", err)
+			continue
+		}
+
+		fmt.Printf("Resources found on %s:\n", baseURL)
+		for _, resource := range resources.([]interface{}) {
+			fmt.Printf("- %s\n", resource)
+		}
+
+		page.Close()
 	}
-	return ""
 }
