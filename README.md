@@ -98,6 +98,19 @@ make clean-db
 - subfinder
 - katana
 - sqlite3
+- SecLists wordlist (or your own custom wordlist)
+
+### Environment Setup
+
+Set the path to your wordlist:
+```bash
+export WORDLIST_PATH=/path/to/wordlist
+```
+
+You can either:
+- Download SecLists from GitHub: `git clone https://github.com/danielmiessler/SecLists.git`
+  and use `/Discovery/Web-Content/raft-medium-directories.txt`
+- Or provide your own custom wordlist
 
 ## Pipeline Example
 
@@ -109,6 +122,11 @@ cat domains.txt | sort -u | ./bin/discover-web | tee web.txt
 cat web.txt | ./bin/discover-urls | tee urls.txt
 cat urls.txt | ./bin/discover-endpoints | tee endpoints.txt
 cat urls.txt | ./bin/discover-files | tee files.txt
+```
+
+You can also chain SQLite queries with tools. For example, scan files on all live domains:
+```bash
+sqlite3 vulnex.db "SELECT domain FROM assets WHERE status_code=200" | ./bin/discover-files
 ```
 
 ## Report
