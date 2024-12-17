@@ -46,16 +46,20 @@ func main() {
         log.Fatal("No domains provided")
     }
 
-    // Run gau
-    cmd := exec.Command("gau",
-        "--blacklist", "png,jpg,gif,jpeg,css,js,woff,woff2,svg",
-    )
+    // Add debug logging
+    fmt.Fprintf(os.Stderr, "Processing %d domains...\n", len(domains))
 
-    // Set up pipe to send domains to gau
-    stdin, err := cmd.StdinPipe()
-    if err != nil {
-        log.Fatal(err)
-    }
+    // Run gau with timeout context
+    args := append([]string{
+        "--blacklist", "png,jpg,gif,jpeg,css,js,woff,woff2,svg",
+        "--threads", "10",
+    }, domains...)  // Add domains as command line arguments
+    
+    cmd := exec.Command("gau", args...)
+
+    // Add error output capture
+    var stderr bytes.Buffer
+    cmd.Stderr = &stderr
 
     var out bytes.Buffer
     cmd.Stdout = &out
@@ -65,19 +69,15 @@ func main() {
         log.Fatal("Error starting gau:", err)
     }
 
-    // Write domains to gau's stdin
-    for _, domain := range domains {
-        fmt.Fprintln(stdin, domain)
-    }
-    stdin.Close()
-
     // Wait for command to complete
     if err := cmd.Wait(); err != nil {
+        log.Printf("gau stderr output: %s\n", stderr.String())
         log.Fatal("Error running gau:", err)
     }
 
     // Process URLs
     scanner = bufio.NewScanner(strings.NewReader(out.String()))
+    urlCount := 0
     for scanner.Scan() {
         urlStr := scanner.Text()
         if urlStr == "" {
@@ -102,7 +102,13 @@ func main() {
         if err != nil {
             log.Printf("Error storing URL %s: %v\n", urlStr, err)
         } else {
+            urlCount++
+            if urlCount%1000 == 0 {
+                fmt.Fprintf(os.Stderr, "Processed %d URLs...\n", urlCount)
+            }
             fmt.Println(urlStr)
         }
     }
+
+    fmt.Fprintf(os.Stderr, "Finished processing %d URLs\n", urlCount)
 }
