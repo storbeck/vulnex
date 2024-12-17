@@ -23,13 +23,20 @@ func main() {
 
     // Create assets table
     _, err = db.Exec(`CREATE TABLE IF NOT EXISTS assets (
-        domain TEXT PRIMARY KEY,
-        status_code INTEGER,
-        title TEXT,
-        tech TEXT,
-        server TEXT,
-        content_type TEXT,
-        tls_version TEXT
+    domain TEXT PRIMARY KEY,
+    status_code INTEGER,
+    title TEXT,
+    tech TEXT,
+    server TEXT,
+    content_type TEXT,
+    tls_version TEXT,
+    final_url TEXT,
+    favicon_hash TEXT,
+    web_server TEXT,
+    csp TEXT,
+    jarm TEXT,
+    cert_chain TEXT,
+    ports TEXT
     )`)
     if err != nil {
         log.Fatal("Error creating table:", err)
@@ -62,8 +69,22 @@ func main() {
     tmpfile.Close()
 
     // Run httpx once with all domains
-    cmd := exec.Command("httpx", "-json", "-tech-detect", "-title", "-server", 
-        "-tls-grab", "-status-code", "-content-type", "-l", tmpfile.Name())
+    cmd := exec.Command("httpx", 
+    "-json",
+    "-tech-detect", 
+    "-title",
+    "-server",
+    "-tls-grab",
+    "-status-code",
+    "-content-type",
+    "-location",           // Follow redirects and get final URL
+    "-favicon",            // Get favicon hash
+    "-web-server",         // Web server info
+    "-csp-probe",         // Content Security Policy
+    "-jarm",              // JARM TLS fingerprint
+    "-x509-chain",        // Full certificate chain
+    "-ports", "80,443,8080,8443", // Check multiple ports
+    "-l", tmpfile.Name())
     var out bytes.Buffer
     cmd.Stdout = &out
     err = cmd.Run()
@@ -95,19 +116,27 @@ func main() {
             tech = strings.Join(techStrings, ", ")
         }
 
-        // Store results
-        _, err = db.Exec(`
-            INSERT OR REPLACE INTO assets 
-            (domain, status_code, title, tech, server, content_type, tls_version) 
-            VALUES (?, ?, ?, ?, ?, ?, ?)`,
-            result["url"],
-            result["status_code"],
-            result["title"],
-            tech,
-            result["webserver"],
-            result["content-type"],
-            result["tls"],
-        )
+        // Extract TLS version if present
+		var tlsVersion string
+		if tlsData, ok := result["tls"].(map[string]interface{}); ok {
+			if version, ok := tlsData["version"].(string); ok {
+				tlsVersion = version
+			}
+		}
+
+		// Store results
+		_, err = db.Exec(`
+			INSERT OR REPLACE INTO assets
+			(domain, status_code, title, tech, server, content_type, tls_version)
+			VALUES (?, ?, ?, ?, ?, ?, ?)`,
+			result["url"],
+			result["status_code"],
+			result["title"],
+			tech,
+			result["webserver"],
+			result["content-type"],
+			tlsVersion,  // Use the extracted version instead of the whole map
+		)
         if err != nil {
             log.Printf("Error storing asset %v: %v\n", result["url"], err)
         } else {

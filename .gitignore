@@ -24,8 +24,9 @@ vendor/
 *.swp
 *.swo
 
-# SQLite database files (noticed from the codebase)
+# SQLite database files
 *.db
+domains.txt
 
 # OS specific files
 .DS_Store
